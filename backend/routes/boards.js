@@ -1,9 +1,9 @@
 import express from "express";
 import jwt from "jsonwebtoken";
-import { db } from "../firebase.js"; 
+import { db } from "../firebase.js";
 
 const router = express.Router();
-const JWT_SECRET = "my_secret_key"; 
+const JWT_SECRET = "my_secret_key";
 
 async function checkAuth(request, response, next) {
   try {
@@ -12,38 +12,53 @@ async function checkAuth(request, response, next) {
 
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, JWT_SECRET);
-    request.userEmail = decoded.email; 
+    request.userEmail = decoded.email;
     next();
   } catch (error) {
     return response.status(401).json({ error: "Unauthorized" });
   }
 }
-
-router.post("/", checkAuth, async (request, response) => {
+router.post("/", checkAuth, async (req, res) => {
   try {
-    const { name, description } = request.body;
-    if (!name) return response.status(400).json({ error: "Name is required" });
+    const { name, description } = req.body;
+    if (!name) return res.status(400).json({ error: "Name is required" });
 
-    const now = new Date();
-    const boardRef = db.collection("boards").doc();
-    const boardData = {
+    const userEmail = req.userEmail;
+    const newBoardRef = db.collection("boards").doc();
+    const newBoardData = {
+      id: newBoardRef.id,
       name,
       description: description || "",
-      owner_id: request.userEmail,
-      members: [], 
-      createdAt: adminTimestamp(now),
-      updatedAt: adminTimestamp(now),
+      owner_id: userEmail,
+      members: [],
+      cards: ["To Do", "Doing", "Done"],
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
-    await boardRef.set(boardData);
+    await newBoardRef.set(newBoardData);
+    res.status(201).json(newBoardData);
+  } catch (err) {
+    console.error("Create board error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+router.get("/:boardId/cards", checkAuth, async (req, res) => {
+  try {
+    const { boardId } = req.params;
+    const boardRef = db.collection("boards").doc(boardId);
+    const boardSnap = await boardRef.get();
+    if (!boardSnap.exists) return res.status(404).json({ error: "Board not found" });
 
-    response.status(201).json({
-      id: boardRef.id,
-      ...boardData,
-    });
-  } catch (error) {
-    console.error("Create board error:", error);
-    response.status(500).json({ error: error.message });
+    // Lấy tất cả card có boardId
+    const cardsSnap = await db.collection("cards").where("boardId", "==", boardId).get();
+    const cards = [];
+    cardsSnap.forEach(doc => cards.push({ id: doc.id, ...doc.data() }));
+
+    res.json({ cards });
+  } catch (err) {
+    console.error("Get cards error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -183,7 +198,7 @@ router.post("/:boardId/invite", checkAuth, async (request, response) => {
 router.post("/:boardId/invite/:invitationId/respond", checkAuth, async (request, response) => {
   try {
     const { boardId, invitationId } = request.params;
-    const { status } = request.body; 
+    const { status } = request.body;
     const userEmail = request.userEmail;
 
     if (!["accepted", "rejected"].includes(status)) return response.status(400).json({ error: "Invalid status" });
@@ -218,6 +233,34 @@ router.post("/:boardId/invite/:invitationId/respond", checkAuth, async (request,
   } catch (error) {
     console.error("Respond invite error:", error);
     response.status(500).json({ error: error.message });
+  }
+});
+router.post("/:boardId/cards", checkAuth, async (req, res) => {
+  try {
+    const { boardId } = req.params;
+    const { name, description, createdAt } = req.body;
+    if (!name) return res.status(400).json({ error: "Name is required" });
+
+    const boardRef = db.collection("boards").doc(boardId);
+    const boardSnap = await boardRef.get();
+    if (!boardSnap.exists) return res.status(404).json({ error: "Board not found" });
+
+    const newCardRef = db.collection("cards").doc();
+    const cardData = {
+      id: newCardRef.id,
+      boardId,
+      name,
+      description: description || "",
+      createdAt: createdAt || new Date(),
+      tasks_count: 0,
+      list_member: []
+    };
+
+    await newCardRef.set(cardData);
+    res.status(201).json(cardData);
+  } catch (err) {
+    console.error("Create card error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -7,6 +7,7 @@ import Signup from './components/Signup';
 import Signin from './components/Signin';
 import VerifyOtp from './components/VerifyOtp';
 import Dashboard from './components/dashboard';
+import Board from './components/board';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'; // nếu cần JS (modal, dropdown, tooltip…)
 
@@ -20,6 +21,7 @@ root.render(
         <Route path='/signup' element={<Signup />} />
         <Route path='/verify-otp' element={<VerifyOtp/>} />
         <Route path='/dashboard' element={<Dashboard/>}/>
+        <Route path='/board' element={<Board/>}/>
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
