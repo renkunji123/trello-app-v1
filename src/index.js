@@ -1,18 +1,27 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import App from './App';
 import reportWebVitals from './reportWebVitals';
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Signup from './components/Signup';
+import Signin from './components/Signin';
+import VerifyOtp from './components/VerifyOtp';
+import Dashboard from './components/dashboard';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap/dist/js/bootstrap.bundle.min.js'; // nếu cần JS (modal, dropdown, tooltip…)
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App >
-        <>
-          
-        </>
-    </App>
+    <BrowserRouter>
+      <Routes>
+        <Route path='/' element={<Signin />} />
+        <Route path='/signin' element={<Signin />} />
+        <Route path='/signup' element={<Signup />} />
+        <Route path='/verify-otp' element={<VerifyOtp/>} />
+        <Route path='/dashboard' element={<Dashboard/>}/>
+      </Routes>
+    </BrowserRouter>
   </React.StrictMode>
 );
 
