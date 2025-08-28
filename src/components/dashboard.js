@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import logo from '../img/logo.png';
 import { FaBell } from "react-icons/fa6";
 import { IoMdPeople } from "react-icons/io";
@@ -8,24 +9,20 @@ import { Modal, Button, Form } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 
 const BoardCard = ({ board, onClick }) => {
-    const style = {
-        height: '150px',
-        padding: '10px',
-        borderRadius: '5px',
-        backgroundColor: '#fff',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        minWidth: '150px'
-    };
-
     return (
-        <div style={style}>
+        <div style={{
+            height: '150px',
+            padding: '10px',
+            borderRadius: '5px',
+            backgroundColor: '#fff',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            minWidth: '150px'
+        }}>
             <h6 className="card-title">{board.name}</h6>
             <p className="card-text">{board.description}</p>
-            <button
-                className="btn btn-outline-secondary mt-2"
-                onClick={() => { onClick(board); }} >
+            <button className="btn btn-outline-secondary mt-2" onClick={() => onClick(board)}>
                 Open
             </button>
         </div>
@@ -33,47 +30,49 @@ const BoardCard = ({ board, onClick }) => {
 };
 
 export default function Dashboard() {
-    const [members, setMembers] = useState([]);
-    const [boards, setBoards] = useState([]);
+    const [allMembers, setAllMembers] = useState([]);
+    const [userBoards, setUserBoards] = useState([]);
     const navigate = useNavigate();
     const [userProfile, setUserProfile] = useState(null);
     const [showProfileModal, setShowProfileModal] = useState(false);
-    const [formData, setFormData] = useState({ fullName: '', avatar: '' });
+    const [profileForm, setProfileForm] = useState({ fullName: '', avatar: '' });
     const [showBoardModal, setShowBoardModal] = useState(false);
-    const [newBoard, setNewBoard] = useState({ name: '', description: '' });
+    const [newBoardData, setNewBoardData] = useState({ name: '', description: '' });
 
-    const handleOpenBoard = (board) => {
-        navigate(`/board?id=${board.id}`);
-    };
+    const handleOpenBoard = (board) => { navigate(`/board?id=${board.id}`); };
 
     useEffect(() => {
-        fetch("http://localhost:3000/auth/users")
-            .then(response => response.json())
-            .then(data => setMembers(data.users))
-            .catch(error => console.error("không thể load user", error));
-
         const token = localStorage.getItem("token");
+        // check token trước 
         if (!token) {
             alert("Bạn chưa đăng nhập!");
             navigate("/signin");
             return;
         }
+
+        fetch("http://localhost:3000/auth/users")
+            .then(res => res.json()) // 
+            .then(data => setAllMembers(data.users))
+            .catch(err => console.error("Có lỗi khi lấy danh sách người dùng", err)); 
+
         fetch("http://localhost:3000/auth/user", {
             headers: { Authorization: `Bearer ${token}` }
         })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 if (data.user) {
                     setUserProfile(data.user);
-                    setFormData({ fullName: data.user.fullName || '', avatar: data.user.avatar || '' });
+                    setProfileForm({ fullName: data.user.fullName || '', avatar: data.user.avatar || '' });
                 }
-            });
+            })
+            .catch(error => console.error("Failed to fetch user profile", error)); // Đôi khi lỗi tiếng Anh, lỗi tiếng Việt
+
         fetch("http://localhost:3000/boards", {
             headers: { Authorization: `Bearer ${token}` }
         })
-            .then(response => response.json())
-            .then(data => setBoards(data.boards || []))
-            .catch(error => console.error(error));
+            .then(res => res.json())
+            .then(data => setUserBoards(data.boards || []))
+            .catch(error => console.error("Lỗi khi tải bảng", error));
     }, [navigate]);
 
     const handleProfileSave = () => {
@@ -84,14 +83,14 @@ export default function Dashboard() {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(formData)
+            body: JSON.stringify(profileForm) 
         })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 setUserProfile(data.user);
                 setShowProfileModal(false);
             })
-            .catch(error => console.error(error));
+            .catch(error => console.error("Không thể lưu profile!", error));
     }
 
     const handleBoardSave = () => {
@@ -102,17 +101,17 @@ export default function Dashboard() {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(newBoard)
+            body: JSON.stringify(newBoardData)
         })
             .then(res => res.json())
             .then(data => {
                 if (data.id) {
-                    setBoards([...boards, data]);
+                    setUserBoards([...userBoards, data]);
                     setShowBoardModal(false);
-                    setNewBoard({ name: '', description: '' });
+                    setNewBoardData({ name: '', description: '' });
                 }
             })
-            .catch(err => console.error(err));
+            .catch(err => console.error("Thêm board mới thất bại", err));
     };
 
     return (
@@ -124,7 +123,7 @@ export default function Dashboard() {
                     <div
                         className="d-flex align-items-center p-2"
                         onClick={() => {
-                            setFormData({
+                            setProfileForm({
                                 fullName: userProfile?.fullName,
                                 avatar: userProfile?.avatar
                             });
@@ -151,7 +150,7 @@ export default function Dashboard() {
                             <IoMdPeople size={20} className="me-2" />
                             <span>All members</span>
                         </div>
-                        {members.map((member, idx) => (
+                        {allMembers.map((member, idx) => (
                             <div key={idx} className="d-flex align-items-center bg-white p-2 mb-2 rounded" >
                                 <img
                                     src={member.avatar || 'https://i.postimg.cc/W4mxd35T/avt.png'}
@@ -173,7 +172,7 @@ export default function Dashboard() {
                         <h5 style={{ color: '#afafaf' }}>YOUR WORKSPACE</h5>
                     </div>
                     <div className="row g-3">
-                        {boards.map(board => (
+                        {userBoards.map(board => (
                             <div key={board.id} className="col-2">
                                 <BoardCard board={board} onClick={handleOpenBoard} />
                             </div>
@@ -191,7 +190,6 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* Profile Modal */}
             <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)}>
                 <Modal.Header closeButton>
                     <Modal.Title>Edit Profile</Modal.Title>
@@ -202,16 +200,16 @@ export default function Dashboard() {
                             <Form.Label>Full Name</Form.Label>
                             <Form.Control
                                 type="text"
-                                value={formData.fullName}
-                                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                value={profileForm.fullName}
+                                onChange={(e) => setProfileForm({ ...profileForm, fullName: e.target.value })}
                             />
                         </Form.Group>
                         <Form.Group className="mb-3">
                             <Form.Label>Avatar URL</Form.Label>
                             <Form.Control
                                 type="text"
-                                value={formData.avatar || ''}
-                                onChange={(e) => setFormData({ ...formData, avatar: e.target.value })}
+                                value={profileForm.avatar || ''}
+                                onChange={(e) => setProfileForm({ ...profileForm, avatar: e.target.value })}
                             />
                         </Form.Group>
                     </Form>
@@ -222,7 +220,6 @@ export default function Dashboard() {
                 </Modal.Footer>
             </Modal>
 
-            {/* Board Modal */}
             <Modal show={showBoardModal} onHide={() => setShowBoardModal(false)}>
                 <Modal.Header closeButton>
                     <Modal.Title>Create Board</Modal.Title>
@@ -233,16 +230,16 @@ export default function Dashboard() {
                             <Form.Label>Name</Form.Label>
                             <Form.Control
                                 type="text"
-                                value={newBoard.name}
-                                onChange={(e) => setNewBoard({ ...newBoard, name: e.target.value })}
+                                value={newBoardData.name}
+                                onChange={(e) => setNewBoardData({ ...newBoardData, name: e.target.value })}
                             />
                         </Form.Group>
                         <Form.Group className="mb-3">
                             <Form.Label>Description</Form.Label>
                             <Form.Control
                                 type="text"
-                                value={newBoard.description}
-                                onChange={(e) => setNewBoard({ ...newBoard, description: e.target.value })}
+                                value={newBoardData.description}
+                                onChange={(e) => setNewBoardData({ ...newBoardData, description: e.target.value })}
                             />
                         </Form.Group>
                     </Form>
