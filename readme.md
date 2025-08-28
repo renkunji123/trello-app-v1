@@ -31,6 +31,7 @@ git clone https://github.com/renkunji123/trello-app.git
 
 ### Node.js and Express.js Version
 <img width="465" height="77" alt="image" src="https://github.com/user-attachments/assets/65077aee-ff39-41c4-9a20-b230841dd127" />
+
 # Config Firebase 
 Create a Firebase project: Go to Firebase Console, create a new project.
 
