@@ -50,19 +50,19 @@ Initialize the Firebase Admin SDK with that key.
 At the path
 ../trello-app/
 run bash: 
-  firebase login
-  firebase init hosting
+  `firebase login`
+  `firebase init hosting`
 
     ? Are you ready to proceed? (Y/n) : Y
 
-  firebase use "your project name"
+ ` firebase use "your project name"`
   
     ? Do you want to use a web framework? (experimental) (Y/n): N 
     ? Configure as a single-page app (rewrite all urls to /index.html)? (Y/n): N
     ? Set up automatic builds and deploys with GitHub? (Y/n): optional
     ? File public/index.html already exists. Overwrite? (y/N): N
   
-  firebase deploy
+  `firebase deploy`
 
 In the project directory, you can run:
 # Run server backend first
