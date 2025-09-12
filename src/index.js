@@ -9,7 +9,7 @@ import VerifyOtp from './components/VerifyOtp';
 import Dashboard from './components/dashboard';
 import Board from './components/board';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap/dist/js/bootstrap.bundle.min.js'; // nếu cần JS (modal, dropdown, tooltip…)
+import 'bootstrap/dist/js/bootstrap.bundle.min.js'; 
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

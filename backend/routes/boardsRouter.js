@@ -4,7 +4,7 @@ import { db } from "../firebase.js";
 import admin from 'firebase-admin';
 
 const router = express.Router();
-const JWT_SECRET = "my_secret_key"; 
+const JWT_SECRET = "my_secret_key";
 
 async function checkAuth(request, response, next) {
     try {
@@ -12,9 +12,9 @@ async function checkAuth(request, response, next) {
 
         if (!authHeader) {
             response.status(401).json({ error: "No token provided" });
-            return; 
+            return;
         }
-        
+
         const token = authHeader.split(" ")[1];
         const decoded = jwt.verify(token, JWT_SECRET);
         request.userEmail = decoded.email;
@@ -33,8 +33,8 @@ router.post("/", checkAuth, async (req, res) => {
         }
 
         const userEmail = req.userEmail;
-        const boardRef = db.collection("boards").doc();  
-        const boardData = {  
+        const boardRef = db.collection("boards").doc();
+        const boardData = {
             id: boardRef.id,
             name,
             description: description || "",
@@ -56,12 +56,12 @@ router.post("/", checkAuth, async (req, res) => {
 router.get("/", checkAuth, async (req, res) => {
     try {
         const userEmail = req.userEmail;
-        const boardsCollection = db.collection("boards"); 
+        const boardsCollection = db.collection("boards");
 
         const ownerSnap = await boardsCollection.where("owner_id", "==", userEmail).get();
         const memberSnap = await boardsCollection.where("members", "array-contains", userEmail).get();
 
-        const allBoards = new Map(); 
+        const allBoards = new Map();
         ownerSnap.forEach(doc => allBoards.set(doc.id, { id: doc.id, ...doc.data() }));
         memberSnap.forEach(doc => allBoards.set(doc.id, { id: doc.id, ...doc.data() }));
 
@@ -78,8 +78,8 @@ router.get("/:id", checkAuth, async (req, res) => {
         const boardId = req.params.id;
         const userEmail = req.userEmail;
 
-        const boardDoc = await db.collection("boards").doc(boardId).get(); 
-        if (!boardDoc.exists) return res.status(404).json({ error: "Không tìm thấy board." }); 
+        const boardDoc = await db.collection("boards").doc(boardId).get();
+        if (!boardDoc.exists) return res.status(404).json({ error: "Không tìm thấy board." });
 
         const board = { id: boardDoc.id, ...boardDoc.data() };
         if (board.owner_id !== userEmail && !(board.members || []).includes(userEmail)) {
@@ -99,9 +99,9 @@ router.put("/:id", checkAuth, async (req, res) => {
         const userEmail = req.userEmail;
         const { name, description, lists } = req.body;
 
-        const boardRef = db.collection("boards").doc(boardId); 
+        const boardRef = db.collection("boards").doc(boardId);
         const docSnap = await boardRef.get();
-        if (!docSnap.exists) return res.status(404).json({ error: "Board không tồn tại." }); 
+        if (!docSnap.exists) return res.status(404).json({ error: "Board không tồn tại." });
 
         const board = docSnap.data();
         if (board.owner_id !== userEmail) {
@@ -114,7 +114,7 @@ router.put("/:id", checkAuth, async (req, res) => {
         if (lists !== undefined) updates.lists = lists;
 
         await boardRef.update(updates);
-        const updatedBoardDoc = await boardRef.get(); 
+        const updatedBoardDoc = await boardRef.get();
         res.json({ id: updatedBoardDoc.id, ...updatedBoardDoc.data() });
     } catch (error) {
         console.error("Update board error:", error);
@@ -127,7 +127,7 @@ router.delete("/:id", checkAuth, async (req, res) => {
         const boardId = req.params.id;
         const userEmail = req.userEmail;
 
-        const boardDocRef = db.collection("boards").doc(boardId); 
+        const boardDocRef = db.collection("boards").doc(boardId);
         const boardSnap = await boardDocRef.get();
         if (!boardSnap.exists) return res.status(404).json({ error: "Bảng không tồn tại." });
 
@@ -199,41 +199,7 @@ router.post("/:boardId/cards", checkAuth, async (req, res) => {
     }
 });
 
-router.post("/:id/invite", checkAuth, async (req, res) => {
-    try {
-        const boardId = req.params.id;
-        const userEmail = req.userEmail;
-        const { email_member } = req.body;
 
-        if (!email_member) {
-            return res.status(400).json({ success: false, error: "Cần cung cấp email thành viên." });
-        }
-
-        const boardRef = db.collection("boards").doc(boardId);
-        const boardSnap = await boardRef.get();
-        if (!boardSnap.exists) {
-            return res.status(404).json({ success: false, error: "Bảng không tồn tại." });
-        }
-
-        const board = boardSnap.data();
-        if (board.owner_id !== userEmail) {
-            return res.status(403).json({ success: false, error: "Chỉ chủ bảng mới có thể mời thành viên." });
-        }
-
-        if (board.members.includes(email_member)) {
-            return res.status(409).json({ success: false, error: "Thành viên này đã có trong bảng rồi." });
-        }
-
-        await boardRef.update({
-            members: admin.firestore.FieldValue.arrayUnion(email_member)
-        });
-        return res.status(201).json({ success: true, message: "Lời mời đã được gửi thành công." });
-
-    } catch (error) {
-        console.error("Invite member error:", error);
-        return res.status(500).json({ success: false, error: "Đã có lỗi xảy ra trên server." });
-    }
-});
 router.put("/:boardId/cards/:cardId", checkAuth, async (req, res) => {
     try {
         const { boardId, cardId } = req.params;
@@ -291,5 +257,93 @@ router.delete("/:boardId/cards/:cardId", checkAuth, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+router.post("/:boardId/invite", checkAuth, async (req, res) => {
+    try {
+        const { invitedEmail } = req.body;
+        const { boardId } = req.params;
+        const inviterEmail = req.userEmail;
 
+        const userRef = db.collection('users').doc(invitedEmail);
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) {
+            return res.status(404).json({ error: "Email người dùng không tồn tại." });
+        }
+
+        const invitationRef = await db.collection('invitations').add({
+            boardId: boardId,
+            invitedByEmail: inviterEmail,
+            invitedToEmail: invitedEmail,
+            status: 'pending',
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        res.status(200).json({ message: "Lời mời đã được gửi thành công." });
+    } catch (err) {
+        console.error("Lỗi khi gửi lời mời:", err);
+        res.status(500).json({ error: "Có lỗi xảy ra khi gửi lời mời." });
+    }
+});
+router.get("/invitations", checkAuth, async (req, res) => {
+    try {
+        const userEmail = req.userEmail;
+        const invitationsSnap = await db.collection("invitations")
+            .where("invitedToEmail", "==", userEmail)
+            .get();
+
+        const invitations = [];
+        for (const doc of invitationsSnap.docs) {
+            const invitation = { id: doc.id, ...doc.data() };
+
+            // Lấy thông tin board từ boardId
+            const boardDoc = await db.collection("boards").doc(invitation.boardId).get();
+            if (boardDoc.exists) {
+                invitation.boardName = boardDoc.data().name;
+            }
+
+            invitations.push(invitation);
+        }
+
+        res.json({ invitations });
+    } catch (error) {
+        console.error("Get invitations error:", error);
+        res.status(500).json({ error: "Có lỗi xảy ra khi lấy lời mời." });
+    }
+});
+router.delete("/:id", checkAuth, async (req, res) => {
+    try {
+        const boardId = req.params.id;
+        const userEmail = req.userEmail;
+
+        const boardRef = db.collection("boards").doc(boardId);
+        const boardDoc = await boardRef.get();
+
+        if (!boardDoc.exists) {
+            return res.status(404).json({ error: "Board không tồn tại." });
+        }
+
+        const boardData = boardDoc.data();
+
+        // Kiểm tra quyền sở hữu: chỉ người tạo mới có thể xóa bảng
+        if (boardData.creatorEmail !== userEmail) {
+            return res.status(403).json({ error: "Bạn không có quyền xóa bảng này." });
+        }
+
+        // Xóa tất cả các thẻ liên quan đến bảng
+        const batch = db.batch();
+        const cardsQuery = db.collection("cards").where("boardId", "==", boardId);
+        const cardsSnapshot = await cardsQuery.get();
+        cardsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        // Xóa bảng
+        batch.delete(boardRef);
+        await batch.commit();
+
+        res.status(200).json({ message: "Bảng đã được xóa thành công." });
+    } catch (err) {
+        console.error("Lỗi khi xóa bảng:", err);
+        res.status(500).json({ error: "Có lỗi xảy ra khi xóa bảng." });
+    }
+});
 export default router;

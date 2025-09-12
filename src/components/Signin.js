@@ -26,7 +26,6 @@ export default function Signin() {
       setTimeout(() => {
         navigate("/verify-otp", { state: { email, authType: "signin" } });
       },);
-
     } else {
       if (data.error?.includes("Don't have account yet?")) {
         setPopup(true)
@@ -37,10 +36,6 @@ export default function Signin() {
   const signUpRedirect = () => {
     setPopup(false);
     navigate("/signup", { state: { email } });
-  };
-
-  const closePopup = () => {
-    setPopup(false);
   };
 
   return (
